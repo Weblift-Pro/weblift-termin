@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Termin vereinbaren – Weblift</title>
+<style>
+  :root{
+    --bg:#F6F4EF;
+    --card:#FFFFFF;
+    --ink:#1B1E1C;
+    --muted:#6B6F6A;
+    --line:#E4E1D8;
+    --accent:#0F5E52;
+    --accent-ink:#F6F4EF;
+    --accent-soft:#E4EFEC;
+    --disabled:#D8D5CB;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg:#15171A;
+      --card:#1E2124;
+      --ink:#EDEDE9;
+      --muted:#9A9D97;
+      --line:#31352F;
+      --accent:#3FA592;
+      --accent-ink:#0C1210;
+      --accent-soft:#1D2B27;
+      --disabled:#2A2D28;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15171A;
+    --card:#1E2124;
+    --ink:#EDEDE9;
+    --muted:#9A9D97;
+    --line:#31352F;
+    --accent:#3FA592;
+    --accent-ink:#0C1210;
+    --accent-soft:#1D2B27;
+    --disabled:#2A2D28;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:calc(env(safe-area-inset-top,0px) + 28px) 18px calc(env(safe-area-inset-bottom,0px) + 40px);
+    display:flex;
+    justify-content:center;
+  }
+  .wrap{width:100%;max-width:560px;}
+  header{margin-bottom:24px;}
+  .eyebrow{color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.02em;}
+  h1{font-size:28px;line-height:1.2;margin:6px 0 8px;font-weight:700;}
+  .sub{color:var(--muted);font-size:15px;line-height:1.5;margin:0;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;}
+  .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .month-nav button{
+    background:none;border:1px solid var(--line);color:var(--ink);
+    width:34px;height:34px;border-radius:9px;font-size:16px;cursor:pointer;
+  }
+  .month-nav button:disabled{opacity:.3;cursor:default;}
+  .month-label{font-weight:600;font-size:16px;}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .dow{text-align:center;font-size:11px;color:var(--muted);padding-bottom:4px;}
+  .day{
+    aspect-ratio:1;border-radius:9px;border:1px solid transparent;
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+    cursor:pointer;background:transparent;color:var(--ink);
+  }
+  .day.empty{visibility:hidden;}
+  .day.off{color:var(--disabled);cursor:default;}
+  .day.selected{background:var(--accent);color:var(--accent-ink);font-weight:700;}
+  .day:not(.off):not(.empty):hover{border-color:var(--accent);}
+  .slots{display:none;margin-top:18px;}
+  .slots.show{display:block;}
+  .slots-label{font-size:13px;color:var(--muted);margin-bottom:10px;}
+  .slot-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .slot{
+    padding:9px 16px;border-radius:9px;border:1px solid var(--line);
+    background:transparent;color:var(--ink);font-size:14px;cursor:pointer;
+  }
+  .slot.selected{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;}
+  .form-card{display:none;}
+  .form-card.show{display:block;}
+  label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  input,textarea{
+    width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);
+    background:var(--bg);color:var(--ink);font-size:15px;font-family:inherit;
+  }
+  textarea{min-height:80px;resize:vertical;}
+  .picked{
+    background:var(--accent-soft);border-radius:10px;padding:10px 12px;
+    font-size:14px;margin-bottom:4px;
+  }
+  .cta{
+    width:100%;margin-top:18px;padding:14px;border:none;border-radius:11px;
+    background:var(--accent);color:var(--accent-ink);font-size:16px;font-weight:700;
+    cursor:pointer;
+  }
+  .cta:disabled{background:var(--disabled);color:var(--muted);cursor:default;}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Weblift</div>
+    <h1>Termin für ein Kennenlern-Gespräch</h1>
+    <p class="sub">45 Minuten, Mo–Fr 16–18 Uhr oder Sa 8–12 Uhr. Wähle einen Termin – ich melde mich zur Bestätigung per E-Mail.</p>
+  </header>
+
+  <div class="card">
+    <div class="month-nav">
+      <button id="prevBtn" aria-label="Vorheriger Monat">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button id="nextBtn" aria-label="Nächster Monat">›</button>
+    </div>
+    <div class="grid" id="dowRow"></div>
+    <div class="grid" id="dayGrid"></div>
+
+    <div class="slots" id="slotsBlock">
+      <div class="slots-label" id="slotsLabel"></div>
+      <div class="slot-row" id="slotRow"></div>
+    </div>
+  </div>
+
+  <div class="card form-card" id="formCard">
+    <div class="picked" id="pickedSummary"></div>
+    <label for="nameInput">Name</label>
+    <input id="nameInput" type="text" placeholder="Dein Name">
+    <label for="msgInput">Nachricht (worum geht's?)</label>
+    <textarea id="msgInput" placeholder="Kurz dein Anliegen"></textarea>
+    <button class="cta" id="bookBtn" disabled>Termin per E-Mail anfragen</button>
+    <div class="hint">Öffnet dein E-Mail-Programm mit vorausgefüllter Anfrage – kein Konto nötig.</div>
+  </div>
+</div>
+
+<script>
+const RECIPIENT = "Weblift-pro@gmx.de";
+const WEEKDAY_SLOTS = ["16:30","17:30","18:30"];
+const SATURDAY_SLOTS = ["08:00","09:00","10:00","11:00"];
+const MONTHS_AHEAD = 3;
+
+const dowNames = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+const monthNames = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+const today = new Date(); today.setHours(0,0,0,0);
+let viewMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+const maxMonth = new Date(today.getFullYear(), today.getMonth() + MONTHS_AHEAD, 1);
+
+let selectedDate = null;
+let selectedSlot = null;
+
+const dowRow = document.getElementById('dowRow');
+dowNames.forEach(d => {
+  const el = document.createElement('div');
+  el.className = 'dow'; el.textContent = d;
+  dowRow.appendChild(el);
+});
+
+function isSunday(date){ return date.getDay() === 0; }
+function isPast(date){ return date < today; }
+function slotsFor(date){ return date.getDay() === 6 ? SATURDAY_SLOTS : WEEKDAY_SLOTS; }
+
+function renderMonth(){
+  document.getElementById('monthLabel').textContent =
+    monthNames[viewMonth.getMonth()] + " " + viewMonth.getFullYear();
+  document.getElementById('prevBtn').disabled = viewMonth.getTime() <= minMonth.getTime();
+  document.getElementById('nextBtn').disabled = viewMonth.getTime() >= maxMonth.getTime();
+
+  const grid = document.getElementById('dayGrid');
+  grid.innerHTML = '';
+  const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+  const startOffset = (firstDay.getDay() + 6) % 7; // Monday = 0
+  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate();
+
+  for(let i=0;i<startOffset;i++){
+    const e = document.createElement('div'); e.className='day empty'; grid.appendChild(e);
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const date = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d);
+    const btn = document.createElement('button');
+    btn.className = 'day';
+    btn.textContent = d;
+    const unavailable = isSunday(date) || isPast(date);
+    if(unavailable){
+      btn.classList.add('off');
+    } else {
+      btn.addEventListener('click', () => selectDate(date, btn));
+    }
+    if(selectedDate && date.getTime() === selectedDate.getTime()){
+      btn.classList.add('selected');
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function selectDate(date, btnEl){
+  selectedDate = date;
+  selectedSlot = null;
+  document.querySelectorAll('.day.selected').forEach(e => e.classList.remove('selected'));
+  btnEl.classList.add('selected');
+
+  const slotsBlock = document.getElementById('slotsBlock');
+  const slotRow = document.getElementById('slotRow');
+  const label = document.getElementById('slotsLabel');
+  const dateStr = date.toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long' });
+  label.textContent = "Verfügbare Zeiten am " + dateStr;
+  slotRow.innerHTML = '';
+  slotsFor(date).forEach(time => {
+    const b = document.createElement('button');
+    b.className = 'slot';
+    b.textContent = time + " Uhr";
+    b.addEventListener('click', () => selectSlot(time, b));
+    slotRow.appendChild(b);
+  });
+  slotsBlock.classList.add('show');
+  document.getElementById('formCard').classList.remove('show');
+  updateBookButton();
+}
+
+function selectSlot(time, btnEl){
+  selectedSlot = time;
+  document.querySelectorAll('.slot.selected').forEach(e => e.classList.remove('selected'));
+  btnEl.classList.add('selected');
+
+  const dateStr = selectedDate.toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  document.getElementById('pickedSummary').textContent = "Gewählter Termin: " + dateStr + ", " + time + " Uhr";
+  document.getElementById('formCard').classList.add('show');
+  updateBookButton();
+}
+
+function updateBookButton(){
+  const btn = document.getElementById('bookBtn');
+  const nameOk = document.getElementById('nameInput').value.trim().length > 0;
+  btn.disabled = !(selectedDate && selectedSlot && nameOk);
+}
+
+document.getElementById('nameInput').addEventListener('input', updateBookButton);
+
+document.getElementById('bookBtn').addEventListener('click', () => {
+  const name = document.getElementById('nameInput').value.trim();
+  const msg = document.getElementById('msgInput').value.trim();
+  const dateStr = selectedDate.toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const subject = "Terminanfrage: " + dateStr + ", " + selectedSlot + " Uhr";
+  const body =
+    "Terminwunsch: " + dateStr + ", " + selectedSlot + " Uhr\n" +
+    "Name: " + name + "\n" +
+    "Nachricht: " + (msg || "–");
+  const mailto = "mailto:" + RECIPIENT +
+    "?subject=" + encodeURIComponent(subject) +
+    "&body=" + encodeURIComponent(body);
+  window.location.href = mailto;
+});
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if(viewMonth.getTime() > minMonth.getTime()){
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1);
+    renderMonth();
+  }
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if(viewMonth.getTime() < maxMonth.getTime()){
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 1);
+    renderMonth();
+  }
+});
+
+renderMonth();
+</script>
+</body>
+</html>
